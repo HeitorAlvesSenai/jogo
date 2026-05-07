@@ -1,0 +1,73 @@
+import pygame
+import sys
+import serial
+
+# === CONFIG SERIAL ===
+porta = 'COM9'  # MUDE para sua porta
+baudrate = 9600
+
+arduino = serial.Serial(porta, baudrate, timeout=0.1)
+
+# Inicialização do Pygame
+pygame.init()
+
+LARGURA, ALTURA = 800, 400
+tela = pygame.display.set_mode((LARGURA, ALTURA))
+pygame.display.set_caption("Simulador de Pedal de Bicicleta")
+
+# Cores
+BRANCO = (255, 255, 255)
+AZUL = (30, 144, 255)
+CINZA = (200, 200, 200)
+PRETO = (0, 0, 0)
+
+# Física
+velocidade = 0.0
+aceleracao = 0.8
+friccao = 0.992
+marcha = 1
+
+fonte = pygame.font.SysFont("Arial", 24)
+relogio = pygame.time.Clock()
+
+while True:
+    tela.fill(BRANCO)
+
+    for evento in pygame.event.get():
+        if evento.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+    # === LEITURA SERIAL ===
+    try:
+        if arduino.in_waiting > 0:
+            dado = arduino.readline().decode('utf-8').strip()
+
+            if dado == "PEDALANDO":
+                velocidade += aceleracao
+
+            elif dado == "PARADO":
+                pass  # não acelera
+
+    except:
+        pass
+
+    # Física
+    velocidade *= friccao
+    if velocidade < 0.1:
+        velocidade = 0
+
+    # Interface
+    pygame.draw.rect(tela, CINZA, (100, 200, 600, 50))
+    pygame.draw.rect(tela, AZUL, (100, 200, velocidade * 20, 50))
+
+    texto_instrucao = fonte.render("Arduino controlando pedal", True, PRETO)
+    texto_vel = fonte.render(f"Velocidade: {velocidade:.2f} km/h | Marcha: {marcha}", True, PRETO)
+
+    tela.blit(texto_instrucao, (100, 100))
+    tela.blit(texto_vel, (100, 150))
+
+    pygame.draw.circle(tela, AZUL, (400, 320), 30)
+
+    pygame.display.flip()
+    relogio.tick(60)
